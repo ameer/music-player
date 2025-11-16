@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <title>Dynamic Music Player</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Music Player">
     <link rel="manifest" href="/manifest.json">
@@ -165,6 +165,21 @@
         button:hover {
             background: rgba(255, 255, 255, 0.8);
         }
+
+        input[type="file"] {
+            margin: 10px;
+        }
+
+        #predefinedPlaylists {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #predefinedPlaylists button {
+            margin: 5px;
+        }
     </style>
 </head>
 
@@ -176,7 +191,7 @@
         <img id="currentCover" src="https://placehold.co/300?text=No+Cover" width="300" height="300" alt="Album Cover">
     </div>
 
-    <audio id="audio" controls preload="metadata" style="display: none;"></audio>
+    <audio id="audio" controls preload="metadata"></audio>
 
     <div class="controls">
         <button onclick="prevSong()">⏮ Prev</button>
@@ -192,10 +207,23 @@
 
     <ul id="playlist"></ul>
 
-    <h3>Paste Playlist Array</h3>
+    <h3>Predefined Playlists</h3>
+    <div id="predefinedPlaylists">
+        <!-- Add buttons for each JSON file here, e.g.: -->
+        <button onclick="loadPredefined('m/hayedeh.json')">Hayedeh</button>
+        <button onclick="loadPredefined('m/ebi.json')">Ebi</button>
+        <button onclick="loadPredefined('m/siavash.json')">Siavash Ghomayshi</button>
+        <button onclick="loadPredefined('m/moein.json')">Moein</button>
+        <button onclick="loadPredefined('m/shahram-solati.json')">Shahram Solati</button>
+        <!-- Add more as you create new JSON files -->
+    </div>
+
+    <h3>Paste Playlist Array or Upload JSON</h3>
     <textarea id="playlistInput"
-        placeholder='Example: ["https://example.com/song1.mp3", "https://example.com/song2.mp3"]'></textarea><br>
-    <button onclick="savePlaylist()">Save & Load New Playlist</button>
+        placeholder='Example: ["https://example.com/song1.mp3", "https://example.com/song2.mp3"] or array of objects'></textarea><br>
+    <button onclick="savePlaylist()">Save & Load from Paste</button>
+    <input type="file" id="playlistFile" accept=".json">
+    <button onclick="loadFromFile()">Load from File</button>
 
     <script>
         const audio = document.getElementById('audio');
@@ -210,24 +238,34 @@
         let currentIndex = 0;
         let shuffleMode = false;
         let shuffleOrder = [];
+        let positionUpdateInterval;
 
-        // Human-readable title from URL
-        function getDisplayName (url) {
-            if (!url) return "Unknown Song";
-            let name = decodeURIComponent(url.split('/').pop().split('?')[0]);
+        // Helper to get image type from URL
+        function getImageType (url) {
+            if (url.endsWith('.png')) return 'image/png';
+            return 'image/jpeg';
+        }
+
+        // Human-readable display name
+        function getDisplayName (song) {
+            if (!song || !song.link) return "Unknown Song";
+            if (song.artist && song.song) return `${song.artist} - ${song.song}`;
+            if (song.title) return song.title;
+            let name = decodeURIComponent(song.link.split('/').pop().split('?')[0]);
             name = name.replace(/\.[^/.]+$/, ''); // remove extension
             name = name.replace(/_/g, ' ');
             return name.trim();
         }
 
-        // For MediaMetadata – try to split Artist - Title
-        function getMetadataInfo (url) {
-            const display = getDisplayName(url);
+        // For MediaMetadata
+        function getMetadataInfo (song) {
+            if (!song || !song.link) return { title: "Unknown Song", artist: "Unknown Artist" };
+            const display = getDisplayName(song);
             if (display.includes(' - ')) {
                 const parts = display.split(' - ', 2);
                 return { title: parts[1].trim(), artist: parts[0].trim() };
             }
-            return { title: display, artist: "Unknown Artist" };
+            return { title: display, artist: song.artist || "Unknown Artist" };
         }
 
         function formatTime (seconds) {
@@ -266,7 +304,7 @@
                 nameSpan.textContent = getDisplayName(song);
                 nameSpan.onclick = () => loadSong(index, true);
                 const downloadA = document.createElement('a');
-                downloadA.href = song;
+                downloadA.href = song.link;
                 downloadA.download = `${getDisplayName(song)}.mp3`;
                 downloadA.textContent = '⬇';
                 li.appendChild(nameSpan);
@@ -294,11 +332,13 @@
 
         function loadSong (index, autoplay = true) {
             currentIndex = index;
-            audio.src = songs[currentIndex];
-            const info = getMetadataInfo(songs[currentIndex]);
+            const song = songs[currentIndex];
+            audio.src = song.hq_link || song.link;
+            const info = getMetadataInfo(song);
             currentTitle.textContent = `${info.title} - ${info.artist}`;
-            currentCover.src = `https://placehold.co/300?text=${encodeURIComponent(info.title)}`;
-            updateMediaSession(info.title, info.artist);
+            currentCover.src = song.photo || song.thumbnail || `https://placehold.co/300?text=${encodeURIComponent(info.title)}`;
+            currentCover.alt = info.title;
+            updateMediaSession(song);
 
             // Reset seekbar until we know duration
             seekbar.max = 1;
@@ -350,37 +390,69 @@
             loadSong(currentIndex);
         }
 
-        function updateMediaSession (title, artist) {
+        function updateMediaSession (song) {
             if ('mediaSession' in navigator) {
+                const info = getMetadataInfo(song);
+                let artwork = [
+                    { src: 'https://placehold.co/96', sizes: '96x96', type: 'image/png' },
+                    { src: 'https://placehold.co/128', sizes: '128x128', type: 'image/png' },
+                    { src: 'https://placehold.co/256', sizes: '256x256', type: 'image/png' },
+                    { src: 'https://placehold.co/512', sizes: '512x512', type: 'image/png' }
+                ];
+                if (song.photo) {
+                    const type = getImageType(song.photo);
+                    artwork = [
+                        { src: song.thumbnail || song.photo, sizes: '96x96', type },
+                        { src: song.photo_240 || song.photo, sizes: '128x128', type },
+                        { src: song.photo_240 || song.photo, sizes: '256x256', type },
+                        { src: song.photo, sizes: '512x512', type }
+                    ];
+                }
+
                 navigator.mediaSession.metadata = new MediaMetadata({
-                    title: title,
-                    artist: artist,
+                    title: info.title,
+                    artist: info.artist,
                     album: 'My Playlist',
-                    artwork: [
-                        { src: 'https://placehold.co/512?text=' + title + '\n' + artist, sizes: '512x512', type: 'image/png' },
-                        { src: 'https://placehold.co/256?text=' + title + '\n' + artist, sizes: '256x256', type: 'image/png' },
-                        { src: 'https://placehold.co/128?text=' + title + '\n' + artist, sizes: '128x128', type: 'image/png' },
-                        { src: 'https://placehold.co/96?text=' + title + '\n' + artist, sizes: '96x96', type: 'image/png' }
-                    ]
+                    artwork
                 });
 
-                // Action handlers (Android lock-screen / notification controls)
-                navigator.mediaSession.setActionHandler('play', () => audio.play());
-                navigator.mediaSession.setActionHandler('pause', () => audio.pause());
-                navigator.mediaSession.setActionHandler('previoustrack', prevSong);
-                navigator.mediaSession.setActionHandler('nexttrack', nextSong);
-                navigator.mediaSession.setActionHandler('seekto', details => {
-                    audio.currentTime = details.seekTime;
-                    updatePositionState();
-                });
-                navigator.mediaSession.setActionHandler('seekforward', details => {
-                    audio.currentTime += (details.seekOffset || 10);
-                    updatePositionState();
-                });
-                navigator.mediaSession.setActionHandler('seekbackward', details => {
-                    audio.currentTime -= (details.seekOffset || 10);
-                    updatePositionState();
-                });
+                const defaultSkipTime = 10;
+
+                const actionHandlers = [
+                    ['play', () => audio.play()],
+                    ['pause', () => audio.pause()],
+                    ['previoustrack', prevSong],
+                    ['nexttrack', nextSong],
+                    ['stop', () => audio.pause()],
+                    ['seekbackward', (details) => {
+                        const skipTime = details.seekOffset || defaultSkipTime;
+                        audio.currentTime = Math.max(audio.currentTime - skipTime, 0);
+                        updatePositionState();
+                    }],
+                    ['seekforward', (details) => {
+                        const skipTime = details.seekOffset || defaultSkipTime;
+                        audio.currentTime = Math.min(audio.currentTime + skipTime, audio.duration);
+                        updatePositionState();
+                    }],
+                    ['seekto', (details) => {
+                        if (details.fastSeek && 'fastSeek' in audio) {
+                            audio.fastSeek(details.seekTime);
+                        } else {
+                            audio.currentTime = details.seekTime;
+                        }
+                        updatePositionState();
+                    }]
+                ];
+
+                for (const [action, handler] of actionHandlers) {
+                    try {
+                        navigator.mediaSession.setActionHandler(action, handler);
+                    } catch (error) {
+                        console.log(`MediaSession action "${action}" not supported:`, error);
+                    }
+                }
+
+                navigator.mediaSession.playbackState = audio.paused ? 'paused' : 'playing';
             }
         }
 
@@ -394,13 +466,34 @@
             }
         }
 
-        // Seekbar + time display
+        // Playback state and interval for notification sync
+        audio.addEventListener('play', () => {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'playing';
+            }
+            // Workaround interval for bug
+            clearInterval(positionUpdateInterval);
+            positionUpdateInterval = setInterval(updatePositionState, 1000);
+        });
+
+        audio.addEventListener('pause', () => {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'paused';
+            }
+            clearInterval(positionUpdateInterval);
+        });
+
+        audio.addEventListener('loadedmetadata', () => {
+            updatePositionState();  // Initial sync after metadata
+        });
+
+        // Seekbar + time display (for in-app UI)
         audio.addEventListener('timeupdate', () => {
             if (!isNaN(audio.duration)) {
                 seekbar.max = audio.duration;
                 seekbar.value = audio.currentTime;
                 timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
-                updatePositionState(); // ← this makes the Android notification seekbar live-update
+                // No need to call updatePositionState here; interval handles it for notification
             }
         });
 
@@ -410,7 +503,10 @@
         });
 
         // Auto-advance to next song
-        audio.addEventListener('ended', nextSong);
+        audio.addEventListener('ended', () => {
+            clearInterval(positionUpdateInterval);  // Clear on end
+            nextSong();
+        });
 
         // Save progress every 5 seconds (efficient, only when something to save)
         setInterval(() => {
@@ -428,13 +524,20 @@
             }
         });
 
-        function savePlaylist () {
+        function processPlaylist (arr) {
             try {
-                const input = document.getElementById('playlistInput').value.trim();
-                const arr = JSON.parse(input);
                 if (!Array.isArray(arr)) throw new Error();
 
-                songs = arr;
+                // Normalize to array of objects
+                songs = arr.map(item => {
+                    if (typeof item === 'string') {
+                        return { link: item };
+                    } else if (typeof item === 'object' && item.link) {
+                        return item;
+                    } else {
+                        throw new Error('Invalid item in array');
+                    }
+                });
 
                 // Start fresh with a new playlist
                 localStorage.removeItem('currentIndex');
@@ -448,15 +551,63 @@
                 buildPlaylist();
                 if (songs.length > 0) loadSong(0);
             } catch (e) {
-                alert('Invalid JSON – must be an array of URLs.\nExample: ["url1.mp3","url2.mp3"]');
+                alert('Invalid JSON – must be an array of URLs or objects with at least "link".\nExample: ["url1.mp3"] or [{"link":"url1.mp3", "artist":"Artist", "song":"Song", "photo":"cover.jpg"}]');
             }
+        }
+
+        function savePlaylist () {
+            const input = document.getElementById('playlistInput').value.trim();
+            if (input) {
+                const arr = JSON.parse(input);
+                processPlaylist(arr);
+            }
+        }
+
+        function loadFromFile () {
+            const fileInput = document.getElementById('playlistFile');
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target.result.trim();
+                    const arr = JSON.parse(content);
+                    processPlaylist(arr);
+                };
+                reader.readAsText(file);
+            } else {
+                alert('Please select a JSON file.');
+            }
+        }
+
+        function loadPredefined (file) {
+            fetch(file)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load playlist');
+                    }
+                    return response.json();
+                })
+                .then(arr => processPlaylist(arr))
+                .catch(e => {
+                    console.error(e);
+                    alert('Error loading predefined playlist: ' + e.message);
+                });
         }
 
         // ─── Page load – resume last session ─────────────────────
         window.onload = () => {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').catch(console.error);
+            }
+
             const savedSongs = localStorage.getItem('songs');
             if (savedSongs) {
                 songs = JSON.parse(savedSongs);
+                // Upgrade old format if necessary
+                if (songs.length > 0 && typeof songs[0] === 'string') {
+                    songs = songs.map(link => ({ link }));
+                    localStorage.setItem('songs', JSON.stringify(songs)); // Update storage to new format
+                }
                 buildPlaylist();
 
                 const savedIndex = localStorage.getItem('currentIndex');
@@ -486,12 +637,9 @@
             }
 
             // Initial mediaSession setup (will be overwritten when a song loads)
-            updateMediaSession("No song", "Unknown");
+            updateMediaSession({});
             updatePositionState();
         };
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(console.error);
-        }
     </script>
 </body>
 

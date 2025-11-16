@@ -1,0 +1,20 @@
+{
+    "short_name": "Music Player",
+    "name": "Dynamic Music Player",
+    "icons": [
+        {
+            "src": "https://via.placeholder.com/192?text=MP",
+            "type": "image/png",
+            "sizes": "192x192"
+        },
+        {
+            "src": "https://via.placeholder.com/512?text=MP",
+            "type": "image/png",
+            "sizes": "512x512"
+        }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#ffffff",
+    "background_color": "#f0f0f0"
+}

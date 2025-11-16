@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Dynamic Music Player</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Music Player">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: linear-gradient(to bottom, #f0f0f0, #d0d0d0);
+            color: #333;
+        }
+
+        #currentSong {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        #currentTitle {
+            margin-bottom: 10px;
+        }
+
+        #currentCover {
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        #audio {
+            width: 90%;
+            max-width: 500px;
+            margin: 10px 0;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 10px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .controls button {
+            margin: 5px;
+            padding: 10px 15px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .controls button.active {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        input[type="range"] {
+            width: 90%;
+            max-width: 500px;
+            margin: 10px;
+        }
+
+        #timeDisplay {
+            font-size: 14px;
+            margin: 5px;
+            width: 100%;
+        }
+
+        #songSearch {
+            width: 90%;
+            max-width: 500px;
+            padding: 10px;
+            margin: 15px 0;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        #playlist {
+            margin-top: 20px;
+            max-height: 50vh;
+            overflow-y: auto;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            text-align: left;
+        }
+
+        #playlist li {
+            cursor: pointer;
+            padding: 10px;
+            list-style: none;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #playlist li:last-child {
+            border-bottom: none;
+        }
+
+        #playlist li.active {
+            background: rgba(0, 0, 0, 0.1);
+            font-weight: bold;
+        }
+
+        #playlist li .song-name {
+            flex: 1;
+        }
+
+        #playlist li a {
+            text-decoration: none;
+            color: #333;
+            padding: 5px;
+        }
+
+        textarea {
+            width: 90%;
+            max-width: 500px;
+            height: 100px;
+            margin-top: 20px;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.8);
+        }
+    </style>
+</head>
+
+<body>
+    <h2>My Music Player</h2>
+
+    <div id="currentSong">
+        <h3 id="currentTitle">No song selected</h3>
+        <img id="currentCover" src="https://placehold.co/300?text=No+Cover" width="300" height="300" alt="Album Cover">
+    </div>
+
+    <audio id="audio" controls preload="metadata" style="display: none;"></audio>
+
+    <div class="controls">
+        <button onclick="prevSong()">⏮ Prev</button>
+        <button onclick="playPause()">▶️/⏸ Play/Pause</button>
+        <button onclick="nextSong()">⏭ Next</button>
+        <button id="shuffleBtn" onclick="toggleShuffle()">🔀 Shuffle</button>
+        <br>
+        <input type="range" id="seekbar" value="0" step="0.1">
+        <div id="timeDisplay">0:00 / 0:00</div>
+    </div>
+
+    <input type="text" id="songSearch" placeholder="Search songs..." oninput="searchSongs()">
+
+    <ul id="playlist"></ul>
+
+    <h3>Paste Playlist Array</h3>
+    <textarea id="playlistInput"
+        placeholder='Example: ["https://example.com/song1.mp3", "https://example.com/song2.mp3"]'></textarea><br>
+    <button onclick="savePlaylist()">Save & Load New Playlist</button>
+
+    <script>
+        const audio = document.getElementById('audio');
+        const seekbar = document.getElementById('seekbar');
+        const playlistUl = document.getElementById('playlist');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const currentTitle = document.getElementById('currentTitle');
+        const currentCover = document.getElementById('currentCover');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+
+        let songs = [];
+        let currentIndex = 0;
+        let shuffleMode = false;
+        let shuffleOrder = [];
+
+        // Human-readable title from URL
+        function getDisplayName (url) {
+            if (!url) return "Unknown Song";
+            let name = decodeURIComponent(url.split('/').pop().split('?')[0]);
+            name = name.replace(/\.[^/.]+$/, ''); // remove extension
+            name = name.replace(/_/g, ' ');
+            return name.trim();
+        }
+
+        // For MediaMetadata – try to split Artist - Title
+        function getMetadataInfo (url) {
+            const display = getDisplayName(url);
+            if (display.includes(' - ')) {
+                const parts = display.split(' - ', 2);
+                return { title: parts[1].trim(), artist: parts[0].trim() };
+            }
+            return { title: display, artist: "Unknown Artist" };
+        }
+
+        function formatTime (seconds) {
+            if (isNaN(seconds)) return "0:00";
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function shuffleArray (array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function toggleShuffle () {
+            shuffleMode = !shuffleMode;
+            shuffleBtn.classList.toggle('active', shuffleMode);
+            if (shuffleMode) {
+                shuffleOrder = Array.from({ length: songs.length }, (_, i) => i);
+                const currentPos = shuffleOrder.indexOf(currentIndex);
+                if (currentPos !== -1) shuffleOrder.splice(currentPos, 1);
+                shuffleArray(shuffleOrder);
+                shuffleOrder.unshift(currentIndex);
+            }
+        }
+
+        function buildPlaylist () {
+            playlistUl.innerHTML = '';
+            songs.forEach((song, index) => {
+                const li = document.createElement('li');
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'song-name';
+                nameSpan.textContent = getDisplayName(song);
+                nameSpan.onclick = () => loadSong(index, true);
+                const downloadA = document.createElement('a');
+                downloadA.href = song;
+                downloadA.download = `${getDisplayName(song)}.mp3`;
+                downloadA.textContent = '⬇';
+                li.appendChild(nameSpan);
+                li.appendChild(downloadA);
+                playlistUl.appendChild(li);
+            });
+            updateActiveHighlight();
+            searchSongs(); // re-apply current search filter
+        }
+
+        function updateActiveHighlight () {
+            Array.from(playlistUl.children).forEach((li, i) => {
+                li.classList.toggle('active', i === currentIndex);
+            });
+        }
+
+        function searchSongs () {
+            const filter = document.getElementById('songSearch').value.toLowerCase();
+            Array.from(playlistUl.children).forEach(li => {
+                const text = li.textContent.toLowerCase();
+                const isCurrent = li.classList.contains('active');
+                li.style.display = (text.includes(filter) || isCurrent) ? '' : 'none';
+            });
+        }
+
+        function loadSong (index, autoplay = true) {
+            currentIndex = index;
+            audio.src = songs[currentIndex];
+            const info = getMetadataInfo(songs[currentIndex]);
+            currentTitle.textContent = `${info.title} - ${info.artist}`;
+            currentCover.src = `https://placehold.co/300?text=${encodeURIComponent(info.title)}`;
+            updateMediaSession(info.title, info.artist);
+
+            // Reset seekbar until we know duration
+            seekbar.max = 1;
+            seekbar.value = 0;
+            timeDisplay.textContent = `0:00 / 0:00`;
+
+            if (autoplay) {
+                audio.play().catch(e => console.log("Play prevented:", e));
+            }
+            updateActiveHighlight();
+            searchSongs(); // make sure current song is visible
+            localStorage.setItem('currentIndex', currentIndex);
+        }
+
+        function playPause () {
+            if (audio.paused) audio.play();
+            else audio.pause();
+        }
+
+        function nextSong () {
+            if (shuffleMode) {
+                const currentPos = shuffleOrder.indexOf(currentIndex);
+                if (currentPos < shuffleOrder.length - 1) {
+                    currentIndex = shuffleOrder[currentPos + 1];
+                } else {
+                    // Reshuffle all
+                    shuffleOrder = Array.from({ length: songs.length }, (_, i) => i);
+                    shuffleArray(shuffleOrder);
+                    currentIndex = shuffleOrder[0];
+                }
+            } else {
+                currentIndex = (currentIndex + 1) % songs.length;
+            }
+            loadSong(currentIndex);
+        }
+
+        function prevSong () {
+            if (shuffleMode) {
+                const currentPos = shuffleOrder.indexOf(currentIndex);
+                if (currentPos > 0) {
+                    currentIndex = shuffleOrder[currentPos - 1];
+                } else {
+                    // Loop to end
+                    currentIndex = shuffleOrder[shuffleOrder.length - 1];
+                }
+            } else {
+                currentIndex = (currentIndex - 1 + songs.length) % songs.length;
+            }
+            loadSong(currentIndex);
+        }
+
+        function updateMediaSession (title, artist) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: title,
+                    artist: artist,
+                    album: 'My Playlist',
+                    artwork: [
+                        { src: 'https://placehold.co/512?text=' + title, sizes: '512x512', type: 'image/png' },
+                        { src: 'https://placehold.co/256?text=' + title, sizes: '256x256', type: 'image/png' },
+                        { src: 'https://placehold.co/128?text=' + title, sizes: '128x128', type: 'image/png' },
+                        { src: 'https://placehold.co/96?text=' + title, sizes: '96x96', type: 'image/png' }
+                    ]
+                });
+
+                // Action handlers (Android lock-screen / notification controls)
+                navigator.mediaSession.setActionHandler('play', () => audio.play());
+                navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+                navigator.mediaSession.setActionHandler('previoustrack', prevSong);
+                navigator.mediaSession.setActionHandler('nexttrack', nextSong);
+                navigator.mediaSession.setActionHandler('seekto', details => {
+                    audio.currentTime = details.seekTime;
+                    updatePositionState();
+                });
+                navigator.mediaSession.setActionHandler('seekforward', details => {
+                    audio.currentTime += (details.seekOffset || 10);
+                    updatePositionState();
+                });
+                navigator.mediaSession.setActionHandler('seekbackward', details => {
+                    audio.currentTime -= (details.seekOffset || 10);
+                    updatePositionState();
+                });
+            }
+        }
+
+        function updatePositionState () {
+            if ('setPositionState' in navigator.mediaSession) {
+                navigator.mediaSession.setPositionState({
+                    duration: audio.duration || 0,
+                    playbackRate: audio.playbackRate,
+                    position: audio.currentTime || 0
+                });
+            }
+        }
+
+        // Seekbar + time display
+        audio.addEventListener('timeupdate', () => {
+            if (!isNaN(audio.duration)) {
+                seekbar.max = audio.duration;
+                seekbar.value = audio.currentTime;
+                timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+                updatePositionState(); // ← this makes the Android notification seekbar live-update
+            }
+        });
+
+        seekbar.addEventListener('input', () => {
+            audio.currentTime = seekbar.value;
+            updatePositionState();
+        });
+
+        // Auto-advance to next song
+        audio.addEventListener('ended', nextSong);
+
+        // Save progress every 5 seconds (efficient, only when something to save)
+        setInterval(() => {
+            if (songs.length > 0 && !isNaN(audio.currentTime)) {
+                localStorage.setItem('currentIndex', currentIndex);
+                localStorage.setItem('currentTime', audio.currentTime);
+            }
+        }, 5000);
+
+        // Also save on page unload (mobile browsers sometimes kill intervals)
+        window.addEventListener('beforeunload', () => {
+            if (songs.length > 0) {
+                localStorage.setItem('currentIndex', currentIndex);
+                localStorage.setItem('currentTime', audio.currentTime);
+            }
+        });
+
+        function savePlaylist () {
+            try {
+                const input = document.getElementById('playlistInput').value.trim();
+                const arr = JSON.parse(input);
+                if (!Array.isArray(arr)) throw new Error();
+
+                songs = arr;
+
+                // Start fresh with a new playlist
+                localStorage.removeItem('currentIndex');
+                localStorage.removeItem('currentTime');
+                localStorage.setItem('songs', JSON.stringify(songs));
+
+                currentIndex = 0;
+                shuffleMode = false;
+                shuffleBtn.classList.remove('active');
+                shuffleOrder = [];
+                buildPlaylist();
+                if (songs.length > 0) loadSong(0);
+            } catch (e) {
+                alert('Invalid JSON – must be an array of URLs.\nExample: ["url1.mp3","url2.mp3"]');
+            }
+        }
+
+        // ─── Page load – resume last session ─────────────────────
+        window.onload = () => {
+            // PWA setup (single-file friendly)
+            const manifest = {
+                "short_name": "Music Player",
+                "name": "Dynamic Music Player",
+                "icons": [
+                    { "src": "https://placehold.co/192?text=MP", "type": "image/png", "sizes": "192x192" },
+                    { "src": "https://placehold.co/512?text=MP", "type": "image/png", "sizes": "512x512" }
+                ],
+                "start_url": ".",
+                "display": "standalone",
+                "theme_color": "#ffffff",
+                "background_color": "#f0f0f0"
+            };
+            const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+            const manifestUrl = URL.createObjectURL(manifestBlob);
+            const link = document.createElement('link');
+            link.rel = 'manifest';
+            link.href = manifestUrl;
+            document.head.appendChild(link);
+
+            const swCode = `
+                self.addEventListener('install', (event) => {
+                    event.waitUntil(self.skipWaiting());
+                });
+                self.addEventListener('activate', (event) => {
+                    event.waitUntil(self.clients.claim());
+                });
+                self.addEventListener('fetch', (event) => {
+                    event.respondWith(fetch(event.request));
+                });
+            `;
+            const swBlob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(swBlob);
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register(swUrl).catch(console.error);
+            }
+
+            const savedSongs = localStorage.getItem('songs');
+            if (savedSongs) {
+                songs = JSON.parse(savedSongs);
+                buildPlaylist();
+
+                const savedIndex = localStorage.getItem('currentIndex');
+                const savedTime = localStorage.getItem('currentTime');
+
+                if (savedIndex !== null && songs.length > 0) {
+                    currentIndex = Math.min(parseInt(savedIndex, 10), songs.length - 1);
+                    loadSong(currentIndex, false); // load without immediate play
+
+                    if (savedTime !== null) {
+                        const targetTime = parseFloat(savedTime);
+
+                        const resume = () => {
+                            if (audio.readyState >= 2) { // HAVE_CURRENT_DATA
+                                audio.currentTime = targetTime;
+                                updatePositionState();
+                                audio.play().catch(() => { }); // resume playback
+                            }
+                        };
+
+                        audio.addEventListener('canplay', resume, { once: true });
+                        audio.addEventListener('loadedmetadata', resume, { once: true });
+                    } else {
+                        audio.play().catch(() => { });
+                    }
+                }
+            }
+
+            // Initial mediaSession setup (will be overwritten when a song loads)
+            updateMediaSession("No song", "Unknown");
+            updatePositionState();
+        };
+    </script>
+</body>
+
+</html>

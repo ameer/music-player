@@ -357,10 +357,10 @@
                     artist: artist,
                     album: 'My Playlist',
                     artwork: [
-                        { src: 'https://placehold.co/512?text=' + title, sizes: '512x512', type: 'image/png' },
-                        { src: 'https://placehold.co/256?text=' + title, sizes: '256x256', type: 'image/png' },
-                        { src: 'https://placehold.co/128?text=' + title, sizes: '128x128', type: 'image/png' },
-                        { src: 'https://placehold.co/96?text=' + title, sizes: '96x96', type: 'image/png' }
+                        { src: 'https://placehold.co/512?text=' + title + '\n' + artist, sizes: '512x512', type: 'image/png' },
+                        { src: 'https://placehold.co/256?text=' + title + '\n' + artist, sizes: '256x256', type: 'image/png' },
+                        { src: 'https://placehold.co/128?text=' + title + '\n' + artist, sizes: '128x128', type: 'image/png' },
+                        { src: 'https://placehold.co/96?text=' + title + '\n' + artist, sizes: '96x96', type: 'image/png' }
                     ]
                 });
 
@@ -454,43 +454,6 @@
 
         // ─── Page load – resume last session ─────────────────────
         window.onload = () => {
-            // PWA setup (single-file friendly)
-            const manifest = {
-                "short_name": "Music Player",
-                "name": "Dynamic Music Player",
-                "icons": [
-                    { "src": "https://placehold.co/192?text=MP", "type": "image/png", "sizes": "192x192" },
-                    { "src": "https://placehold.co/512?text=MP", "type": "image/png", "sizes": "512x512" }
-                ],
-                "start_url": ".",
-                "display": "standalone",
-                "theme_color": "#ffffff",
-                "background_color": "#f0f0f0"
-            };
-            const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-            const manifestUrl = URL.createObjectURL(manifestBlob);
-            const link = document.createElement('link');
-            link.rel = 'manifest';
-            link.href = manifestUrl;
-            document.head.appendChild(link);
-
-            const swCode = `
-                self.addEventListener('install', (event) => {
-                    event.waitUntil(self.skipWaiting());
-                });
-                self.addEventListener('activate', (event) => {
-                    event.waitUntil(self.clients.claim());
-                });
-                self.addEventListener('fetch', (event) => {
-                    event.respondWith(fetch(event.request));
-                });
-            `;
-            const swBlob = new Blob([swCode], { type: 'application/javascript' });
-            const swUrl = URL.createObjectURL(swBlob);
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register(swUrl).catch(console.error);
-            }
-
             const savedSongs = localStorage.getItem('songs');
             if (savedSongs) {
                 songs = JSON.parse(savedSongs);

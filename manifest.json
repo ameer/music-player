@@ -1,16 +1,33 @@
 {
     "short_name": "Music Player",
     "name": "Dynamic Music Player",
+    "description": "Super Simple Music Player by x.com/ameer_mousavi ⚫⚪ Storia di un grande amore.",
     "icons": [
         {
-            "src": "https://via.placeholder.com/192?text=MP",
+            "src": "/icon-192.png",
             "type": "image/png",
             "sizes": "192x192"
         },
         {
-            "src": "https://via.placeholder.com/512?text=MP",
+            "src": "/icon-512.png",
             "type": "image/png",
             "sizes": "512x512"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/screenshot-wide.png",
+            "sizes": "1280x642",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Desktop view of Music Player"
+        },
+        {
+            "src": "/screenshot-narrow.png",
+            "sizes": "640x1136",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Mobile view of Music Player"
         }
     ],
     "start_url": ".",
